@@ -7,15 +7,15 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class GameDAOImpl extends MySqlDao implements GameDAO {
+public class GameDAOImpl implements GameDAO {
     private Connection conn;
 
-    public GameDAOImpl() {
-        this.conn = conn;
+    public GameDAOImpl() throws DaoException {
+        this.conn = new MySqlDao().getConnection();
     }
 
     @Override
-    public List<Game> getAllGames() {
+    public List<Game> getAllGames() throws DaoException {
         List<Game> games = new ArrayList<>();
         String sql = "SELECT * FROM games";
         try (PreparedStatement stmt = conn.prepareStatement(sql);
@@ -30,13 +30,13 @@ public class GameDAOImpl extends MySqlDao implements GameDAO {
                 games.add(new Game(id, title, rating, releaseYear, developer, platform));
             }
         } catch (SQLException ex) {
-            // handle exception
+            throw new DaoException("Error fetching all games: " + ex.getMessage());
         }
         return games;
     }
 
     @Override
-    public Game getGameById(int id) {
+    public Game getGameById(int id) throws DaoException {
         Game game = null;
         String sql = "SELECT * FROM games WHERE id = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -52,13 +52,13 @@ public class GameDAOImpl extends MySqlDao implements GameDAO {
                 }
             }
         } catch (SQLException ex) {
-            // handle exception
+            throw new DaoException("Error fetching game by id: " + ex.getMessage());
         }
         return game;
     }
 
     @Override
-    public void addGame(Game game) {
+    public void addGame(Game game) throws DaoException {
         String sql = "INSERT INTO games (title, rating, release_year, developer, platform) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, game.getTitle());
@@ -68,12 +68,12 @@ public class GameDAOImpl extends MySqlDao implements GameDAO {
             stmt.setString(5, game.getPlatform());
             stmt.executeUpdate();
         } catch (SQLException ex) {
-            // handle exception
+            throw new DaoException("Error adding game: " + ex.getMessage());
         }
     }
 
     @Override
-    public void updateGame(Game game) {
+    public void updateGame(Game game) throws DaoException {
         String sql = "UPDATE games SET title = ?, rating = ?, release_year = ?, developer = ?, platform = ? WHERE id = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, game.getTitle());
@@ -84,18 +84,18 @@ public class GameDAOImpl extends MySqlDao implements GameDAO {
             stmt.setInt(6, game.getId());
             stmt.executeUpdate();
         } catch (SQLException ex) {
-            // handle exception
+            throw new DaoException("Error updating game: " + ex.getMessage());
         }
     }
 
     @Override
-    public void deleteGame(int id) {
+    public void deleteGame(int id) throws DaoException {
         String sql = "DELETE FROM games WHERE id = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, id);
             stmt.executeUpdate();
         } catch (SQLException ex) {
-            // handle exception
+            throw new DaoException("Error deleting game: " + ex.getMessage());
         }
     }
 }
