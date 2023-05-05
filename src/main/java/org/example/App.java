@@ -3,7 +3,9 @@ package org.example;
 import java.util.List;
 import java.util.Scanner;
 
+
 public class App {
+
     public static void main(String[] args) throws DaoException {
         GameDAO IGameDao = new GameDAOImpl();
         Scanner scanner = new Scanner(System.in);
@@ -15,7 +17,8 @@ public class App {
             System.out.println("\nMenu:");
             System.out.println("1. Get all games");
             System.out.println("2. Get game by ID");
-            System.out.println("3. Quit");
+            System.out.println("3. Delete game by ID");
+            System.out.println("10. Quit");
 
             System.out.print("Enter menu item: ");
             menuItem = scanner.nextInt();
@@ -52,6 +55,20 @@ public class App {
                     break;
 
                 case 3:
+                    System.out.print("Enter the id of the game to delete: ");
+                    int deleteId = scanner.nextInt();
+                    scanner.nextLine();
+                    try {
+                        GameDAO gameDao = IGameDao;
+                        gameDao.deleteGame(deleteId);
+                        System.out.println("Game with id " + deleteId + " deleted successfully.");
+                    } catch (DaoException e) {
+                        System.out.println("Error deleting game: " + e.getMessage());
+                    }
+                    break;
+
+
+                case 10:
                     quit = true;
                     break;
 

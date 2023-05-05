@@ -6,9 +6,11 @@ import java.util.List;
 
 public class GameDAOImpl implements GameDAO {
 
+    private MySqlDao mySqlDao; // declare the variable
     private MySqlDao dao;
 
     public GameDAOImpl() {
+        this.mySqlDao = new MySqlDao(); // initialize the variable
         dao = new MySqlDao();
     }
 
@@ -79,6 +81,28 @@ public class GameDAOImpl implements GameDAO {
 
     @Override
     public void deleteGame(int id) throws DaoException {
-        // Implementation of deleteGame() method goes here
+        Connection connection = null;
+        PreparedStatement statement = null;
+
+        try {
+            connection = mySqlDao.getConnection();
+            String query = "DELETE FROM games WHERE id=?";
+            statement = connection.prepareStatement(query);
+            statement.setInt(1, id);
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new DaoException("Error deleting game: " + e.getMessage());
+        } finally {
+            try {
+                if (statement != null) {
+                    statement.close();
+                }
+                if (connection != null) {
+                    mySqlDao.freeConnection(connection);
+                }
+            } catch (SQLException e) {
+                throw new DaoException("Error closing statement or connection: " + e.getMessage());
+            }
+        }
     }
 }
