@@ -2,40 +2,33 @@ package org.example;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class GameDAOImpl implements GameDAO {
-
-    private MySqlDao mySqlDao; // declare the variable
-    private MySqlDao dao;
-
-    public GameDAOImpl() {
-        this.mySqlDao = new MySqlDao(); // initialize the variable
-        dao = new MySqlDao();
-    }
+    private static final String DATABASE_URL = "jdbc:mysql://localhost:3306/games";
+    private static final String DATABASE_USER = "root";
+    private static final String DATABASE_PASSWORD = "root";
 
     @Override
     public List<Game> getAllGames() throws DaoException {
         List<Game> games = new ArrayList<>();
-        String sql = "SELECT * FROM games";
-        try (Connection connection = dao.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(sql)) {
 
-            while (resultSet.next()) {
-                Game game = new Game(
-                        resultSet.getInt("id"),
-                        resultSet.getString("title"),
-                        resultSet.getFloat("rating"),
-                        resultSet.getInt("release_year"),
-                        resultSet.getString("developer"),
-                        resultSet.getString("platform")
-                );
+        try (Connection conn = DriverManager.getConnection(DATABASE_URL, DATABASE_USER, DATABASE_PASSWORD);
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT * FROM games")) {
+
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String title = rs.getString("title");
+                float rating = rs.getFloat("rating");
+
+                Game game = new Game(id, title, rating);
                 games.add(game);
             }
 
         } catch (SQLException e) {
-            throw new DaoException("Error retrieving games: " + e.getMessage());
+            throw new DaoException("Error retrieving all games: " + e.getMessage());
         }
 
         return games;
@@ -43,66 +36,95 @@ public class GameDAOImpl implements GameDAO {
 
     @Override
     public Game getGameById(int id) throws DaoException {
-        String sql = "SELECT * FROM games WHERE id=?";
-        try (Connection connection = dao.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        Game game = null;
 
-            statement.setInt(1, id);
-            try (ResultSet resultSet = statement.executeQuery()) {
-                if (resultSet.next()) {
-                    Game game = new Game(
-                            resultSet.getInt("id"),
-                            resultSet.getString("title"),
-                            resultSet.getFloat("rating"),
-                            resultSet.getInt("release_year"),
-                            resultSet.getString("developer"),
-                            resultSet.getString("platform")
-                    );
-                    return game;
+        try (Connection conn = DriverManager.getConnection(DATABASE_URL, DATABASE_USER, DATABASE_PASSWORD);
+             PreparedStatement stmt = conn.prepareStatement("SELECT * FROM games WHERE id = ?")) {
+
+            stmt.setInt(1, id);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    String title = rs.getString("title");
+                    float rating = rs.getFloat("rating");
+
+                    game = new Game(id, title, rating);
                 }
             }
 
         } catch (SQLException e) {
-            throw new DaoException("Error retrieving game by id: " + e.getMessage());
+            throw new DaoException("Error retrieving game with ID " + id + ": " + e.getMessage());
         }
 
-        return null;
-    }
-
-    @Override
-    public void addGame(Game game) throws DaoException {
-        // Implementation of addGame() method goes here
-    }
-
-    @Override
-    public void updateGame(Game game) throws DaoException {
-        // Implementation of updateGame() method goes here
+        return game;
     }
 
     @Override
     public void deleteGame(int id) throws DaoException {
-        Connection connection = null;
-        PreparedStatement statement = null;
+        try (Connection conn = DriverManager.getConnection(DATABASE_URL, DATABASE_USER, DATABASE_PASSWORD);
+             PreparedStatement stmt = conn.prepareStatement("DELETE FROM games WHERE id = ?")) {
 
-        try {
-            connection = mySqlDao.getConnection();
-            String query = "DELETE FROM games WHERE id=?";
-            statement = connection.prepareStatement(query);
-            statement.setInt(1, id);
-            statement.executeUpdate();
-        } catch (SQLException e) {
-            throw new DaoException("Error deleting game: " + e.getMessage());
-        } finally {
-            try {
-                if (statement != null) {
-                    statement.close();
-                }
-                if (connection != null) {
-                    mySqlDao.freeConnection(connection);
-                }
-            } catch (SQLException e) {
-                throw new DaoException("Error closing statement or connection: " + e.getMessage());
+            stmt.setInt(1, id);
+            int rowsAffected = stmt.executeUpdate();
+
+            if (rowsAffected == 0) {
+                throw new DaoException("Game with ID " + id + " not found");
             }
+
+        } catch (SQLException e) {
+            throw new DaoException("Error deleting game with ID " + id + ": " + e.getMessage());
         }
     }
+
+    @Override
+    public Game addGame(Game game) throws DaoException {
+        try (Connection conn = DriverManager.getConnection(DATABASE_URL, DATABASE_USER, DATABASE_PASSWORD);
+             PreparedStatement stmt = conn.prepareStatement("INSERT INTO games (title, rating) VALUES (?, ?)", Statement.RETURN_GENERATED_KEYS)) {
+            stmt.setString(1, game.getTitle());
+            stmt.setFloat(2, game.getRating());
+            stmt.setInt(3, game.getYear());
+
+            int rowsAffected = stmt.executeUpdate();
+
+            if (rowsAffected == 0) {
+                throw new DaoException("Error adding game: no rows affected");
+            }
+
+            try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    int id = generatedKeys.getInt(1);
+                    game.setId(id);
+                } else {
+                    throw new DaoException("Error adding game: no ID obtained");
+                }
+            }
+
+        } catch (SQLException e) {
+            throw new DaoException("Error adding game: " + e.getMessage());
+        }
+        return game;
+    }
+
+    @Override
+    public List<Game> findGamesUsingFilter(App.GameRatingComparator gameRatingComparator) throws DaoException {
+        List<Game> games = new ArrayList<>();
+        try (Connection conn = DriverManager.getConnection(DATABASE_URL, DATABASE_USER, DATABASE_PASSWORD);
+             PreparedStatement stmt = conn.prepareStatement("SELECT * FROM games");
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String title = rs.getString("title");
+                float rating = rs.getFloat("rating");
+
+                Game game = new Game(id, title, rating);
+                games.add(game);
+            }
+        } catch (SQLException e) {
+            throw new DaoException("Error retrieving games: " + e.getMessage());
+        }
+
+        games.sort(gameRatingComparator);
+        return games;
+    }
+
 }
