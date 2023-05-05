@@ -1,52 +1,39 @@
 package org.example;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class GameDAOImpl implements GameDAO {
-    private MySqlDao dao = new MySqlDao();
+
+    private MySqlDao dao;
+
+    public GameDAOImpl() {
+        dao = new MySqlDao();
+    }
 
     @Override
     public List<Game> getAllGames() throws DaoException {
-        Connection connection = null;
-        PreparedStatement statement = null;
-        ResultSet resultSet = null;
         List<Game> games = new ArrayList<>();
-
-        try {
-            connection = dao.getConnection();
-            String query = "SELECT * FROM games";
-            statement = connection.prepareStatement(query);
-            resultSet = statement.executeQuery();
+        String sql = "SELECT * FROM games";
+        try (Connection connection = dao.getConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql)) {
 
             while (resultSet.next()) {
-                int id = resultSet.getInt("id");
-                String title = resultSet.getString("title");
-                float rating = resultSet.getFloat("rating");
-                int releaseYear = resultSet.getInt("release_year");
-                String developer = resultSet.getString("developer");
-                String platform = resultSet.getString("platform");
-                Game game = new Game(id, title, rating, releaseYear, developer, platform);
+                Game game = new Game(
+                        resultSet.getInt("id"),
+                        resultSet.getString("title"),
+                        resultSet.getFloat("rating"),
+                        resultSet.getInt("release_year"),
+                        resultSet.getString("developer"),
+                        resultSet.getString("platform")
+                );
                 games.add(game);
             }
+
         } catch (SQLException e) {
-            throw new DaoException("Failed to retrieve all games: " + e.getMessage());
-        } finally {
-            try {
-                if (resultSet != null) {
-                    resultSet.close();
-                }
-                if (statement != null) {
-                    statement.close();
-                }
-                dao.freeConnection(connection);
-            } catch (SQLException e) {
-                throw new DaoException("Failed to close resources: " + e.getMessage());
-            }
+            throw new DaoException("Error retrieving games: " + e.getMessage());
         }
 
         return games;
@@ -54,7 +41,29 @@ public class GameDAOImpl implements GameDAO {
 
     @Override
     public Game getGameById(int id) throws DaoException {
-        // Implementation of getGameById() method goes here
+        String sql = "SELECT * FROM games WHERE id=?";
+        try (Connection connection = dao.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, id);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    Game game = new Game(
+                            resultSet.getInt("id"),
+                            resultSet.getString("title"),
+                            resultSet.getFloat("rating"),
+                            resultSet.getInt("release_year"),
+                            resultSet.getString("developer"),
+                            resultSet.getString("platform")
+                    );
+                    return game;
+                }
+            }
+
+        } catch (SQLException e) {
+            throw new DaoException("Error retrieving game by id: " + e.getMessage());
+        }
+
         return null;
     }
 
