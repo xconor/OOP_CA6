@@ -55,4 +55,12 @@ public class Game {
     public void setPlatform(String platform) {
         this.platform = platform;
     }
+
+    @Override
+    public String toString() {
+        return "Game [id=" + id + ", title=" + title + ", rating=" + rating +
+                ", releaseYear=" + releaseYear + ", developer=" + developer +
+                ", platform=" + platform + "]";
+    }
+
 }

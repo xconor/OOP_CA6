@@ -10,6 +10,7 @@ public interface GameDAO {
     public void addGame(Game game) throws DaoException;
     public void updateGame(Game game) throws DaoException;
     public void deleteGame(int id) throws DaoException;
-
 }
+
+
 
